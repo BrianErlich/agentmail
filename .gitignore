@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+# your own roster stays local; the repository ships roster.example.toml
+roster.toml

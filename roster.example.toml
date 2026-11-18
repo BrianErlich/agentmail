@@ -1,0 +1,28 @@
+# agentmail roster: exceptions only. Without a roster every seat uses the built-in settings.
+# Copy to ~/.config/agentmail/roster.toml (or point AGENTMAIL_ROSTER at it). The daemon reloads it when
+# its modification time changes and keeps the last good copy if a new one does not validate.
+#
+# Keys per seat: overview, reads, names, where, retired, account (a uid), engine and spool (spool seats).
+# At stage 0 every process of the daemon's account can edit this file: it is a convention, not a control.
+
+[seat.lead]
+overview = true              # may run `agentmail desk`; its session-start block gains a one-line desk summary
+
+[seat.codex]
+reads    = "on request"      # no hook for this engine yet: senders are told the seat reads on request
+
+[seat.reviewer]
+names    = ["review"]        # other launcher names (--remote-control NAME) that mean this seat
+
+[seat.laptop]
+where    = "mac"             # a seat on another machine: mail to it is refused with this reason
+
+[seat.old-chat]
+retired  = true              # senders are told the seat is retired
+
+# A second Codex seat chosen by the spool folder its requests are written in (see DESIGN.md §8).
+# The folder must already exist, be owned by the daemon's user, be writable by nobody else, and have
+# no symbolic link anywhere on its path. Clients use it with AGENTMAIL_SPOOL=/that/path.
+# [seat.codex-two]
+# engine = "codex"
+# spool  = "/home/alice/work/codex-two/.agentmail-spool"

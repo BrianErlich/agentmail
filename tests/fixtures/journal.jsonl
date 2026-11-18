@@ -1,0 +1,32 @@
+agentmail-event {"ts": 1800000000.0, "op": "register", "name": "alice-dev", "kind": "claude", "pid": 100, "start": 1, "account": "alice", "level": "conv", "uid": 4242}
+agentmail-event {"ts": 1800000000.0, "op": "seat_new", "name": "alice-dev", "kind": "claude", "pid": 100, "account": "alice", "in_roster": true, "uid": 4242}
+agentmail-event {"ts": 1800000000.0, "op": "seat_new", "name": "webapp", "kind": "claude", "pid": 300, "account": "alice", "in_roster": false, "uid": 4242}
+agentmail-event {"ts": 1800000000.0, "op": "send", "id": "090aca31da41", "from": "alice-dev", "from_kind": "claude", "from_pid": 100, "to": "webapp", "kind": "info", "bytes": 11, "sha256": "aca934edcf339affd309dda0250fe7a8577eec2123e7ebbbcd3fad34d90d4710", "refs_n": 0, "excerpt": "plain hello", "level": "conv", "account": "alice", "re": null, "to_account": "alice", "to_uid": 4242, "uid": 4242}
+agentmail-event {"ts": 1800000000.0, "op": "send", "id": "de4dd139a44e", "from": "alice-dev", "from_kind": "claude", "from_pid": 100, "to": "webapp", "kind": "info", "bytes": 12, "sha256": "48ffdcc6eca5c53dd79dca381505b35cd991d5d1ec22e2f94966f4307f00282f", "refs_n": 0, "excerpt": "a subject | with subject", "level": "conv", "account": "alice", "re": null, "to_account": "alice", "to_uid": 4242, "subject_n": 9, "subject_sha256": "459cbce02008df8e105cf7b1155cd73fc05d4f4ecf811f4b8010d8702adccc0b", "uid": 4242}
+agentmail-event {"ts": 1800000000.0, "op": "send", "id": "0c5679eca2e2", "from": "alice-dev", "from_kind": "claude", "from_pid": 100, "to": "webapp", "kind": "request", "bytes": 6, "sha256": "56ccc4dcfc96534b06fc0c08a301be24f13b491484d5d984953cc0dba9bbb89a", "refs_n": 0, "excerpt": "please", "level": "conv", "account": "alice", "re": null, "to_account": "alice", "to_uid": 4242, "uid": 4242}
+agentmail-event {"ts": 1800000000.0, "op": "surfaced", "name": "webapp", "ids": ["090aca31da41", "de4dd139a44e", "0c5679eca2e2"], "kind": "claude", "pid": 300, "account": "alice", "uid": 4242}
+agentmail-event {"ts": 1800000000.0, "op": "recv", "name": "webapp", "ids": ["0c5679eca2e2"], "kind": "claude", "pid": 300, "start": 1, "account": "alice", "uid": 4242}
+agentmail-event {"ts": 1800000000.0, "op": "send", "id": "4aae6d6e18ef", "from": "webapp", "from_kind": "claude", "from_pid": 300, "to": "alice-dev", "kind": "report", "bytes": 4, "sha256": "a4c3ed04a95a3da14a9d235c83d868bed7c0f45cf7f3faa751ee8f50598d2211", "refs_n": 0, "excerpt": "done", "level": "conv", "account": "alice", "re": "0c5679eca2e2", "to_account": "alice", "to_uid": 4242, "uid": 4242}
+agentmail-event {"ts": 1800000000.0, "op": "state", "id": "0c5679eca2e2", "state": "answered", "name": "webapp", "answer": "4aae6d6e18ef"}
+agentmail-event {"ts": 1800000000.0, "op": "surfaced", "name": "alice-dev", "ids": ["4aae6d6e18ef"], "kind": "claude", "pid": 100, "account": "alice", "uid": 4242}
+agentmail-event {"ts": 1800000000.0, "op": "ack", "name": "webapp", "ids": ["4592ad141aad"], "kind": "claude", "pid": 300, "account": "alice", "uid": 4242}
+agentmail-event {"ts": 1800000000.0, "op": "state", "id": "152e3379a476", "state": "declined", "name": "webapp"}
+agentmail-event {"ts": 1800000000.0, "op": "state", "id": "ba96a0e9cd64", "state": "withdrawn", "name": "alice-dev"}
+agentmail-event {"ts": 1800000000.0, "op": "cmd_alias", "cmd": "recv", "name": "alice-dev", "kind": "claude", "pid": 100, "account": "alice", "uid": 4242}
+agentmail-event {"ts": 1800000000.0, "op": "refused", "account": "alice", "code": "E_HELD", "what": "other", "req_op": "inbox", "name": "alice-dev", "kind": "claude", "pid": 600, "holder": 100, "uid": 4242}
+agentmail-event {"ts": 1800000000.0, "op": "refused", "account": "alice", "code": "E_SEAT", "what": "no_seat", "req_op": "inbox", "name": null, "kind": null, "pid": 40, "holder": null, "uid": 4242}
+agentmail-event {"ts": 1800000000.0, "op": "refused", "account": "alice", "code": "E_SEAT", "what": "recipient", "req_op": "send", "name": "alice-dev", "kind": "claude", "pid": 100, "holder": null, "uid": 4242}
+agentmail-event {"ts": 1800000000.0, "op": "refused", "account": "alice", "code": "E_FORMAT", "what": "stamp_field", "req_op": "send", "name": null, "kind": null, "pid": 10, "holder": null, "uid": 4242}
+agentmail-event {"ts": 1800000000.0, "op": "refused", "account": "alice", "code": "E_FORMAT", "what": "unknown_op", "req_op": "?", "name": null, "kind": null, "pid": 10, "holder": null, "uid": 4242}
+agentmail-event {"ts": 1800000000.0, "op": "refused", "account": "alice", "code": "E_FORMAT", "what": "unknown_field", "req_op": "inbox", "name": null, "kind": null, "pid": 10, "holder": null, "uid": 4242}
+agentmail-event {"ts": 1800000000.0, "op": "refused", "account": "1002", "code": "E_OWNER", "what": "uid", "req_op": "seats", "name": null, "kind": null, "pid": 10, "holder": null, "uid": 1002}
+agentmail-event {"ts": 1800000000.0, "op": "refused", "account": "alice", "code": "E_FORMAT", "what": "roster", "error": "Expected ']' at the end of a table declaration (at line 1, column 8)", "uid": 4242}
+agentmail-event {"ts": 1800000000.0, "op": "rate_limited", "from": "carol-review", "to": "webapp", "kind": "claude", "pid": 700, "start": 1, "from_kind": "claude", "account": "alice", "limit": "rate limit: 30 sends an hour to one seat (pair)", "uid": 4242}
+agentmail-event {"ts": 1800000061.0, "op": "refused_more", "account": "alice", "n": 12, "minute": 1800000000, "by_code": {"E_SEAT": 12}, "uid": 4242}
+agentmail-event {"ts": 1800000061.0, "op": "lease_end", "name": "webapp", "kind": "claude", "pid": 300, "start": 1}
+agentmail-event {"ts": 1800086461.0, "op": "state", "id": "851374afea69", "state": "expired"}
+agentmail-event {"ts": 1800259262.0, "op": "stuck", "id": "090aca31da41", "to": "webapp", "from": "alice-dev", "reason": "seat not running"}
+agentmail-event {"ts": 1800259262.0, "op": "clock", "state": "accepted", "name": "alice-dev", "account": "alice", "uid": 4242}
+agentmail-event {"ts": 1800259262.0, "op": "refused", "account": "alice", "code": "E_FORMAT", "what": "frame", "req_op": "?", "pid": 4242, "uid": 4242}
+agentmail-event {"ts": 1800259262.0, "op": "refused", "account": "alice", "code": "E_LIMIT", "what": "conn_cap", "req_op": "connect", "pid": 4242, "uid": 4242}
+agentmail-event {"ts": 1800259262.0, "op": "refused", "account": "alice", "code": "E_OWNER", "what": "uid", "req_op": "?", "pid": 4242, "uid": 4242}

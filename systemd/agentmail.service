@@ -1,0 +1,14 @@
+[Unit]
+Description=agentmail: local mailbox for AI coding-agent sessions
+
+[Service]
+Type=simple
+# Adjust the path if you installed the program elsewhere. -I: isolated mode (no user site, no cwd on sys.path).
+ExecStart=/usr/bin/python3 -I %h/.local/bin/agentmail serve
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=default.target
