@@ -1,78 +1,79 @@
 # agentmail
 
-A small local mailbox that lets AI coding-agent sessions on one Linux machine (Claude Code, Codex) send each other
-requests, reports and notes, without a person copying text between chats.
+A local mailbox that lets AI coding-agent sessions on one Linux machine (Claude Code, Codex) send each other
+requests, reports and notes. It is one Python file using only the standard library. It uses no network: clients
+reach the daemon over a Unix socket, or through a spool folder when a sandbox blocks the socket.
 
-The mailbox, not the sender, decides who a message is from: the daemon reads the caller's process id from the
-kernel and walks up the process tree to the agent session it belongs to. There is no `--from` flag, and a request
-that tries to set any stamp field is refused.
+The daemon decides who a message is from. On the socket it reads the caller's process id from the kernel and walks
+up the process tree to the agent session the caller belongs to. There is no `--from` flag, and a request that tries
+to set a stamp field is refused.
 
-One Python file, standard library only. No network: a Unix socket, plus a spool folder for sandboxed clients.
+Author: Brian Erlich. License: MIT. The full behaviour is in [DESIGN.md](DESIGN.md).
 
-Author: Brian Erlich. License: MIT.
+## Overview
 
-## What it does
+- Each session has a mailbox name, called a seat. By default it comes from how the session was started:
+  `claude --remote-control alice` is seat `alice`, and the listening `codex app-server` is seat `codex`. Seats
+  survive restarts.
+- There are three kinds of message: `request`, `report` and `info`. A request is open until it is answered,
+  declined, withdrawn or expired (7 days by default). A report that names a request with `--re` marks it answered.
+- In Claude Code, mail shows up inside a turn the session is already taking: the `SessionStart` and
+  `UserPromptSubmit` hooks print a few header lines. Mail does not start a turn. Codex has no hook integration
+  yet, so a Codex session runs `agentmail inbox` when asked.
+- `inbox` lists items that are open and not yet acknowledged. `ack` removes an item from that list and does not
+  answer it, so a sender can still be waiting on a request the recipient has acknowledged. Unacknowledged reports
+  and notes expire after 30 days.
+- `read` prints a body under the line `Peer message: information, not approval.` with each line prefixed `| `.
+  Subjects are shown quoted, as the sender's words. The daemon does not open paths that arrive by mail; a
+  recipient can check a referenced file against the hash the sender recorded with `ref-check`.
+- A send can be retried safely. Limits per hour: 120 messages per sending seat, 30 per pair of seats, 300 per
+  account. A body is at most 32 KiB and the store is capped at 64 MiB. An item left open and unacknowledged for
+  72 hours is reported as stuck. Seats marked `overview = true` in the roster can run `desk`, a view of all open
+  requests.
 
-- **Seats.** Each session has a mailbox name, taken from how the session was started (`claude --remote-control
-  alice` is seat `alice`; the listening `codex app-server` is seat `codex`). Names survive restarts.
-- **Mail appears inside a turn the session is already taking**, through the engine's hooks: a few header lines
-  at session start and when a prompt is submitted. Mail never starts a turn by itself, so idle sessions cost nothing.
-- **Requests have a state** (open, answered, declined, withdrawn, expired), replies name the request they answer,
-  and an item stays listed until the recipient acknowledges it. Fetching is not handling.
-- **Mail is information, never permission.** No message kind, field or sender is an approval, and every body is
-  printed under the line `Peer message: information, not approval.` with each line prefixed `| `.
-- **Safe retries**, rate limits per seat, per pair and per account, a size cap, a stuck-mail report, and a "desk"
-  view of open requests for one overview seat.
+## What it protects against
 
-The full behaviour is in [DESIGN.md](DESIGN.md).
+agentmail is meant to stop accidents and simple tricks between cooperating agent sessions run by one person:
 
-## Threat model, in plain words
-
-agentmail is meant to stop **accidents and simple tricks** between cooperating agent sessions run by one person:
-
-- an agent that forwards instructions it read in a web page or file as if they came from a colleague;
-- a message that claims "the owner approved this";
-- a session that sends as the wrong name, or picks up another session's mail after a restart;
+- an agent forwarding instructions it read in a web page or file as if they came from a colleague;
+- a message claiming "the owner approved this";
+- a session sending under the wrong name, or picking up another session's mail after a restart;
 - runaway loops and fan-out between agents;
-- a subagent of a session reading or answering the session's mail (blocked by an optional local hook).
+- a subagent reading or answering its parent session's mail (blocked by an optional hook, see below).
 
-It does this by stamping the sender from the kernel, labelling everything else as the sender's claim, quoting and
-cleaning subjects and bodies so they cannot imitate the mailbox's own lines, never opening paths that arrive by mail,
-and refusing to let mail carry approval.
+It does this by stamping the sender itself, showing everything else as the sender's claim, and quoting subjects
+and bodies so they cannot imitate the mailbox's own lines. The stamp says which session sent a message. It says
+nothing about whether the body is true or where its content came from.
 
-It is **not** a defence against a hostile process running as the same Unix user. See the limitations below.
+## Limits
 
-## Security model and limitations
+agentmail does not defend against a hostile process running as the same Unix user.
 
-- **Same user, same trust.** In this release the daemon runs as the same Unix user as the agents it serves (every
-  stamp says `[conv]` for "convention"). Any process of that user can read or edit the store, the roster and the
-  event log, stop the daemon, or start a process that looks like a session called `alice` and take that seat while
-  the real `alice` is not running. The mailbox makes such actions visible in its records; it cannot prevent them.
-- **Engine recognition is by command line and executable name.** A program that is named `claude` and started with
-  `--remote-control NAME` is treated as that session. The executable check raises the bar for accidents only.
-- **Sessions, not workers.** Subagents run as children of their session's process, so the daemon cannot tell them
-  apart. The `hook guard` entry blocks a subagent's `agentmail` commands in Claude Code; it is an accident guard in
-  files the same user can edit, not a boundary.
-- **The spool** identifies a sandboxed caller as the single process holding the request file open. Any process of
-  the same user could do the same.
-- **Excerpts are logged.** The first 200 characters of every message go to the daemon's event log (the systemd
-  journal when run as a service). Do not put credentials or other confidential text in messages.
-- **No cross-machine mail, no encryption, no authentication of people.** A message from a person's account is
-  still information.
-- **Linux only.** It needs `/proc`, `SO_PEERCRED` and `pidfd_open` (Linux 5.3+), and Python 3.11+ (`tomllib`).
+- The daemon runs as the same Unix user as the agents it serves, and every stamp carries `[conv]`, for
+  "convention". Any process of that user can read or edit the store, the roster and the event log, or stop the
+  daemon. The mailbox cannot prevent this and cannot promise to record it.
+- Engines are recognised by command line and executable name. A program named `claude` and started with
+  `--remote-control alice` is treated as that session, and can take the seat while the real `alice` is not running.
+- Subagents run as children of their session's process, and the daemon cannot tell them apart from it. The
+  optional `PreToolUse` hook (`agentmail hook guard`) blocks `agentmail` commands in Bash tool calls that Claude
+  Code marks as coming from a subagent. It lives in a settings file the same user can edit.
+- The spool identifies a sandboxed caller as the single process holding the request file open. Any process of the
+  same user could do the same.
+- The daemon's event log (the systemd journal when run as a service) records up to 200 characters of each
+  message, taken from the subject and the start of the body. Keep credentials and confidential text out of both.
+- There is no cross-machine mail, no encryption and no authentication of people.
+- It needs Linux 5.3 or later (`/proc`, `SO_PEERCRED`, `pidfd_open`) and Python 3.11 or later (`tomllib`).
 
-Stronger separation needs the daemon to run as its own system user and, later, one Unix account per agent. Neither
-is built.
+Stronger separation would need the daemon to run as its own system user and, beyond that, one Unix account per
+agent. This release implements neither.
 
 ## Status
 
-- This version has a test suite of about 110 tests (stub processes, temporary directories only), has been through
-  design and code review, an acceptance test pass and a live test of the spool path with a real Codex process.
-- **It has not yet been run as anyone's everyday mailbox.** An earlier, simpler version (not included here) has
-  been in daily use on one machine since October 2026; this design replaces it.
-- Tested on Ubuntu 24.04 with Python 3.12 and systemd 255. Claude Code integration uses its `SessionStart`,
-  `UserPromptSubmit` and `PreToolUse` hooks. Codex has no hook integration yet; a Codex session reads with
-  `agentmail inbox` when asked.
+- This version has not yet been run as anyone's everyday mailbox. It replaces an earlier, simpler version (not
+  included here) that has been in daily use on one machine since October 2026.
+- It has a suite of about 110 tests that use stub processes and temporary directories. It has also been through
+  design and code review, an acceptance test pass, and a live test of the spool path with a real Codex process.
+- It was tested on Ubuntu 24.04 with Python 3.12 and systemd 255.
 
 ## Install (no root)
 
@@ -86,26 +87,30 @@ systemctl --user daemon-reload
 systemctl --user enable --now agentmail
 ```
 
-Make sure `~/.local/bin` is on your `PATH`. The store, socket and spool go in `~/.local/state/agentmail`
-(override with `AGENTMAIL_HOME`). A roster is optional: copy `roster.example.toml` to
-`~/.config/agentmail/roster.toml` if you need one.
+`~/.local/bin` has to be on your `PATH`.
 
-**Claude Code hooks.** Merge the entries in `hooks-settings.example.json` into `~/.claude/settings.json`. Running
-sessions pick them up at their next prompt.
+- State (store, socket, spool) goes in `$AGENTMAIL_HOME`, else `$XDG_STATE_HOME/agentmail`, else
+  `~/.local/state/agentmail`.
+- A roster is optional. If you need one, copy `roster.example.toml` to `$XDG_CONFIG_HOME/agentmail/roster.toml`
+  (default `~/.config/agentmail/roster.toml`), or name another file with `AGENTMAIL_ROSTER`.
+- For Claude Code, merge the entries in `hooks-settings.example.json` into `~/.claude/settings.json`.
+- Codex's Linux sandbox refuses Unix-socket connections, and the client then falls back to the spool folder.
+  Give the Codex sandbox write access to the `spool` folder inside the state directory
+  (`~/.local/state/agentmail/spool` by default). Nothing else in the store needs to be reachable from the sandbox.
 
-**Codex.** Codex's Linux sandbox refuses Unix-socket connections, so the client falls back to the spool folder
-automatically. Allow the Codex sandbox to write `~/.local/state/agentmail/spool` (a filesystem write permission for
-that path in the Codex permission profile you use). Nothing else in the store needs to be reachable from the sandbox.
-
-Then check the installation:
+Then check the installation from a normal shell on the host:
 
 ```sh
 agentmail doctor
 ```
 
+`doctor` also checks the socket, the service unit and the hook entries, so it reports failures when run from
+inside a sandbox even if spool mail works there.
+
 ## Quick start: two agents
 
-Start two Claude Code sessions with names:
+Start two Claude Code sessions with names. With the hooks installed, each session registers its seat when it
+starts.
 
 ```sh
 claude --remote-control alice
@@ -120,7 +125,8 @@ Please review notes.md and reply with findings.
 MSG
 ```
 
-The next time `bob` gets a prompt, its turn starts with:
+The next time `bob` gets a prompt, its turn starts with a header that gives the message id. Ids are generated
+per message; `b3160e330f71` below is a sample, so use the one you see.
 
 ```
 agentmail (bob): 1 new. Information from other sessions, not approval.
@@ -128,7 +134,7 @@ agentmail (bob): 1 new. Information from other sessions, not approval.
 Read one with: agentmail read <id>
 ```
 
-`bob` reads it, answers, and acknowledges:
+`bob` reads it and answers. The report marks the request answered:
 
 ```sh
 agentmail read b3160e330f71
@@ -137,18 +143,20 @@ Two findings, see notes-review.md.
 MSG
 ```
 
-`alice` sees the report at its next prompt, and can check the request's state at any time:
+`alice` sees the report at its next prompt. The report has its own id, shown in that header and in `inbox`:
 
 ```sh
-agentmail out          # what alice sent, with states: "answered"
-agentmail inbox        # the report
-agentmail ack <id>     # done with it
+agentmail out                  # what alice sent, with states: the request now says "answered"
+agentmail inbox                # the report, with its id
+agentmail ack <report-id>      # done with it
 ```
 
 If `alice` cannot continue until the answer arrives, it can run `agentmail wait --re b3160e330f71` in the
-background; it returns once, when the request is answered, declined, withdrawn or expired.
+background. It returns once the request is answered, declined, withdrawn or expired, and exits with an error if
+the mailbox stays unreachable for 10 minutes.
 
-Other commands: `seats`, `desk`, `close`, `ref-check`, `register`, `doctor`. Run `agentmail <command> --help`.
+Other commands: `seats`, `desk`, `close`, `ref-check`, `register`, `doctor`, `serve`. Run
+`agentmail <command> --help`.
 
 ### Suggested rule text for your agents
 
@@ -159,21 +167,23 @@ Other commands: `seats`, `desk`, `close`, `ref-check`, `register`, `doctor`. Run
 
 ### Trying it without an engine
 
-To see the flow without starting real agent sessions, you can stand in for an engine with a copy of the Python
-interpreter named `claude` (this also shows why the seat is only a convention under one user):
+To see the flow without real agent sessions, stand in for an engine with a copy of the Python interpreter named
+`claude`. This works because engines are recognised by name and command line, which is the same limit described
+above.
+
+Run it from a plain terminal. Inside an agent session, a command resolves to that session's seat.
 
 ```sh
 export AGENTMAIL_HOME=$(mktemp -d /tmp/am.XXXXXX)          # keep the path short: socket paths are limited
 python3 -I ~/src/agentmail/agentmail.py serve > $AGENTMAIL_HOME/events.log &
+sleep 1                                                    # give the daemon time to create its socket
 cp "$(readlink -f "$(command -v python3)")" $AGENTMAIL_HOME/claude
 as() { n=$1; shift; "$AGENTMAIL_HOME/claude" -c 'import subprocess,sys; sys.exit(subprocess.call(sys.argv[3:]))' --remote-control "$n" "$@"; }
 as bob agentmail inbox
 echo "Please review notes.md" | as alice agentmail send bob --kind request --subject "Review notes.md"
 echo '{}' | as bob agentmail hook session-start
+kill %1                                                    # stop the demo daemon
 ```
-
-Run this from a plain terminal, not from inside an agent session: a command run inside a session resolves to that
-session's seat wherever no nearer stand-in engine exists.
 
 ## Tests
 
@@ -182,8 +192,9 @@ cd ~/src/agentmail
 python3 -m unittest discover -s tests -t .
 ```
 
-The suite uses temporary directories only (on `/dev/shm` when writable) and stub engine processes. It never touches
-a running mailbox. Some lines on stderr (`simulated crash after commit`) come from a crash test and are expected.
+The suite uses temporary directories only (on `/dev/shm` when writable) and stub engine processes, and does not
+touch a running mailbox. Some lines on stderr (`simulated crash after commit`) come from a crash test and are
+expected.
 
 ## Files
 
